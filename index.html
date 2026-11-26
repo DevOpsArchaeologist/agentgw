@@ -200,7 +200,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
         <p class="lede">agentgw caps what one agent task can cost and do, across every model, tool and agent it touches. It keeps a full record of who did what, and what it cost.</p>
         <div class="buttons">
           <a class="btn primary" href="#access">Request early access</a>
-          <a class="btn ghost" href="#demo">Watch the 60-second demo</a>
+          <a class="btn ghost" href="#demo">Watch the 90-second demo</a>
         </div>
         <p class="note">Runs on Kubernetes beside your models. Agents change one URL and send one header.</p>
       </div>
@@ -226,19 +226,19 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
   <section id="demo">
     <div class="wrap">
       <div class="head">
-        <div class="label">Demo &middot; 60 seconds</div>
-        <h2>A looping agent stopped, a budget enforced, a poisoned tool blocked.</h2>
-        <p class="lede">Recorded against a real agentgw build. The model and the CRM tool server are stand-ins, so you can see every decision without GPUs.</p>
+        <div class="label">Demo &middot; 90 seconds</div>
+        <h2>One request through five agents, OpenAI and NVIDIA NIM models, and MCP tools. Then a loop, a budget and a poisoned tool, stopped.</h2>
+        <p class="lede">Recorded against a real agentgw build. The model, document AI and tool servers are stand-ins with the real model names (gpt-oss-120b, Nemotron 3.5 Super, Nemotron Super 49B, Nemotron OCR, page elements, table structure, gpt-5-mini), so you can see every decision without GPUs.</p>
       </div>
       <video class="demo" controls preload="metadata" playsinline poster="media/demo-poster.jpg" width="1280" height="720">
         <source src="media/demo.mp4" type="video/mp4">
         <a href="media/demo.mp4">Download the demo video</a>
       </video>
       <ol class="steps">
+        <li><h3>Whole flow</h3><p>Orchestrator, query refiner, doc parser, Text2SQL and summarizer share one run. Two calls outside policy are denied, and the cost is tallied per agent.</p></li>
         <li><h3>Loop</h3><p>An agent alternates between two tools. On the third repeat of the cycle, agentgw stops the whole task.</p></li>
         <li><h3>Budget</h3><p>The task may spend $1.00. The call that crosses the line finishes, and the next one is refused.</p></li>
         <li><h3>Tool poisoning</h3><p>The tool server changes a description to steal an SSH key. The tool disappears from the agent and its calls are refused.</p></li>
-        <li><h3>Audit</h3><p>Every call, and the reason the task was stopped, is in the ledger.</p></li>
       </ol>
     </div>
   </section>
