@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>agentgw</title>
+<meta name="description" content="agentgw is a gateway that caps what one AI agent task can cost and do, across every model, tool and agent it touches, and keeps one audit trail.">
+<meta property="og:title" content="agentgw">
+<meta property="og:description" content="Spending limits and circuit breakers for AI agents.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23101820'/%3E%3Cpath d='M8 16h9' stroke='%23f4f6f8' stroke-width='3' stroke-linecap='round'/%3E%3Crect x='19' y='9' width='5' height='14' rx='1.5' fill='%23f0742f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+<style>
+:root {
+  /* Layout: one 1120px column; hero splits copy and a live-looking run ledger. */
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --sunk: #e9edf1;
+  --ink: #101820;
+  --muted: #53606c;
+  --line: #d4dbe2;
+  --stop: #c2410c;
+  --stop-soft: #fde8db;
+  --go: #0f766e;
+  --go-soft: #dcf2ef;
+  --font-display: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1015; --surface: #121a21; --sunk: #0f161c; --ink: #e6edf3; --muted: #95a3b0;
+    --line: #26323c; --stop: #fb8a4c; --stop-soft: #3a1c0d; --go: #43c3b2; --go-soft: #0f2c29;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.6; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--stop); outline-offset: 3px; border-radius: 4px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.05; margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+h1 { font-size: clamp(2.6rem, 6.2vw, 4.4rem); font-weight: 700; }
+h2 { font-size: clamp(1.9rem, 3.6vw, 2.6rem); font-weight: 700; }
+h3 { font-size: 1.2rem; font-weight: 600; }
+p { margin: 0; }
+.label { font-family: var(--font-mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 1.2rem; color: var(--muted); max-width: 54ch; }
+
+/* header */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 11; background: var(--bg); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 60px; }
+.mark { display: flex; align-items: center; gap: .6rem; font-family: var(--font-mono); font-weight: 600; font-size: 1.05rem; text-decoration: none; }
+.mark svg { width: 26px; height: 26px; }
+.nav { display: flex; gap: 1.4rem; font-size: .92rem; }
+.nav a { text-decoration: none; color: var(--muted); }
+.nav a:hover { color: var(--ink); }
+@media (max-width: 760px) { .nav a:not(.cta-link) { display: none; } }
+.cta-link { color: var(--ink) !important; font-weight: 600; }
+
+/* hero */
+.hero { padding-block: 72px 64px; }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+@media (max-width: 900px) { .hero .wrap { grid-template-columns: 1fr; } }
+.hero-copy { display: grid; gap: 1.4rem; }
+.hero h1 .stop { color: var(--stop); }
+.buttons { display: flex; flex-wrap: wrap; gap: .75rem; }
+.btn { display: inline-flex; align-items: center; gap: .5rem; padding: .75rem 1.15rem; border-radius: 8px; font-weight: 600; font-size: .98rem; text-decoration: none; border: 1px solid var(--ink); }
+.btn.primary { background: var(--ink); color: var(--bg); }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn.ghost:hover { border-color: var(--ink); }
+.note { font-size: .9rem; color: var(--muted); }
+
+.ledger { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: 0 24px 48px -32px rgba(16, 24, 32, .45); }
+.ledger-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .65rem 1rem; border-bottom: 1px solid var(--line); background: var(--sunk); }
+.ledger-head span { font-family: var(--font-mono); font-size: .75rem; color: var(--muted); }
+.ledger ol { list-style: none; margin: 0; padding: .6rem 0; font-family: var(--font-mono); font-size: .78rem; line-height: 1.5; }
+.ledger li { display: grid; grid-template-columns: 1.6rem 6.8rem minmax(0, 1fr) auto; gap: .6rem; padding: .22rem 1rem; align-items: baseline; }
+.ledger .n { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.ledger .t { color: var(--muted); }
+.ledger .tgt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ledger .ok { color: var(--go); }
+.ledger li.halt { background: var(--stop-soft); color: var(--stop); font-weight: 600; }
+.ledger li.halt .t, .ledger li.halt .n { color: var(--stop); }
+.ledger .resp { margin: 0 1rem 1rem; padding: .7rem .8rem; border-radius: 8px; background: var(--sunk); font-family: var(--font-mono); font-size: .75rem; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
+@media (prefers-reduced-motion: no-preference) {
+  .ledger li { animation: rise .45s both; }
+  .ledger li:nth-child(n) { animation-delay: calc(var(--i) * 90ms); }
+}
+@keyframes rise { from { opacity: .35; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (max-width: 480px) { .ledger li { grid-template-columns: 1.4rem 5.6rem minmax(0, 1fr); } .ledger li .ok, .ledger li .cost { display: none; } }
+
+/* sections */
+section { padding-block: 80px; border-top: 1px solid var(--line); }
+.head { display: grid; gap: .8rem; margin-bottom: 2.2rem; max-width: 760px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1.2rem; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1.3rem 1.3rem 1.4rem; display: grid; gap: .7rem; align-content: start; }
+.card p { color: var(--muted); font-size: .98rem; }
+.fig { font-family: var(--font-display); font-size: 2.4rem; font-weight: 700; line-height: 1; color: var(--stop); font-variant-numeric: tabular-nums; }
+.src { font-size: .8rem; color: var(--muted); }
+.src a { color: var(--muted); }
+.callout { margin-top: 1.6rem; padding: 1.1rem 1.3rem; border-left: 3px solid var(--stop); background: var(--surface); border-radius: 0 10px 10px 0; max-width: 820px; }
+
+/* how it works */
+.flow { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.flow svg { display: block; width: 100%; min-width: 760px; height: auto; color: var(--ink); }
+.f-box { fill: var(--surface); stroke: var(--line); stroke-width: 1.3; }
+.f-core { fill: var(--sunk); stroke: var(--ink); stroke-width: 1.6; }
+.f-stage { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
+.f-halt { fill: var(--stop-soft); stroke: var(--stop); stroke-width: 1.3; }
+.f-t { fill: var(--ink); font-family: var(--font-body); font-size: 14px; font-weight: 600; }
+.f-s { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
+.f-l { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.f-lh { fill: var(--stop); font-family: var(--font-mono); font-size: 11px; }
+.f-line { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.f-line-h { stroke: var(--stop); stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+.f-ah { fill: var(--muted); }
+.f-ah-h { fill: var(--stop); }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 1rem 1.6rem; margin-top: 2rem; padding: 0; list-style: none; counter-reset: s; }
+.steps li { counter-increment: s; display: grid; gap: .3rem; }
+.steps li::before { content: counter(s); font-family: var(--font-mono); font-size: .8rem; color: var(--stop); }
+.steps p { color: var(--muted); font-size: .95rem; }
+pre.code { margin: 1.8rem 0 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.2rem; font-family: var(--font-mono); font-size: .82rem; line-height: 1.6; overflow-x: auto; }
+.code .c { color: var(--muted); }
+
+/* features */
+.feat { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.feat div { padding: 1.2rem 1.3rem; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); display: grid; gap: .35rem; }
+.feat p { color: var(--muted); font-size: .95rem; }
+.tag { font-family: var(--font-mono); font-size: .7rem; padding: .05rem .45rem; border-radius: 999px; background: var(--go-soft); color: var(--go); justify-self: start; }
+.tag.new { background: var(--stop-soft); color: var(--stop); }
+
+/* compare */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: .92rem; }
+th, td { text-align: left; padding: .75rem .9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { font-family: var(--font-mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--sunk); font-weight: 500; }
+tbody tr:last-child td { border-bottom: 0; }
+td.us, th.us { background: color-mix(in srgb, var(--stop-soft) 60%, transparent); font-weight: 600; }
+
+/* status */
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 1.4rem; }
+.list { margin: 0; padding: 0; list-style: none; display: grid; gap: .7rem; }
+.list li { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr); gap: .5rem; }
+.list li::before { content: "\2192"; color: var(--stop); font-family: var(--font-mono); }
+.stats { display: flex; flex-wrap: wrap; gap: 1rem 2.4rem; margin-top: 1.6rem; }
+.stats b { display: block; font-family: var(--font-display); font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.stats span { color: var(--muted); font-size: .85rem; }
+
+/* founder */
+.founder { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 1.8rem; align-items: start; max-width: 860px; }
+@media (max-width: 560px) { .founder { grid-template-columns: 1fr; } }
+.mono-av { width: 120px; height: 120px; border-radius: 16px; background: var(--ink); color: var(--bg); display: grid; place-items: center; font-family: var(--font-display); font-size: 2.6rem; font-weight: 700; }
+.founder-copy { display: grid; gap: .9rem; }
+.founder-copy p { color: var(--muted); }
+
+/* cta */
+.cta { background: var(--ink); color: var(--bg); border-top: 0; }
+.cta .wrap { display: grid; gap: 1.4rem; justify-items: start; }
+.cta p { color: color-mix(in srgb, var(--bg) 75%, var(--ink)); max-width: 60ch; }
+.cta .btn.primary { background: var(--stop); border-color: var(--stop); color: #fff; }
+.cta .btn.ghost { color: var(--bg); border-color: color-mix(in srgb, var(--bg) 35%, var(--ink)); }
+footer { padding-block: 28px calc(28px + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: .85rem; }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="mark" href="#">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="currentColor"/><path d="M8 16h9" stroke="var(--bg)" stroke-width="3" stroke-linecap="round"/><rect x="19" y="9" width="5" height="14" rx="1.5" fill="var(--stop)"/></svg>
+      agentgw
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#problem">Problem</a>
+      <a href="#how">How it works</a>
+      <a href="#compare">Compare</a>
+      <a href="#founder">Founder</a>
+      <a class="cta-link" href="#access">Early access</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="label">Gateway for AI agents</div>
+        <h1>Spending limits and <span class="stop">circuit breakers</span> for AI agents.</h1>
+        <p class="lede">agentgw caps what one agent task can cost and do, across every model, tool and agent it touches. It keeps a full record of who did what, and what it cost.</p>
+        <div class="buttons">
+          <a class="btn primary" href="#access">Request early access</a>
+          <a class="btn ghost" href="#how">See how it works</a>
+        </div>
+        <p class="note">Runs on Kubernetes beside your models. Agents change one URL and send one header.</p>
+      </div>
+
+      <figure class="ledger" aria-label="Example ledger of one agent run that is stopped by agentgw when it starts looping">
+        <div class="ledger-head"><span>ledger &middot; run_42 &middot; budget $2.00</span><span>example</span></div>
+        <ol>
+          <li style="--i:0"><span class="n">1</span><span class="t">llm.call</span><span class="tgt">nemotron-super</span><span class="cost">$0.004</span></li>
+          <li style="--i:1"><span class="n">2</span><span class="t">tool.call</span><span class="tgt">crm/search_orders</span><span class="ok">ok</span></li>
+          <li style="--i:2"><span class="n">3</span><span class="t">a2a.call</span><span class="tgt">billing-agent joins run</span><span class="ok">ok</span></li>
+          <li style="--i:3"><span class="n">4</span><span class="t">tool.call</span><span class="tgt">crm/get_order</span><span class="ok">ok</span></li>
+          <li style="--i:4"><span class="n">5</span><span class="t">tool.call</span><span class="tgt">crm/search_orders</span><span class="ok">ok</span></li>
+          <li style="--i:5"><span class="n">6</span><span class="t">tool.call</span><span class="tgt">crm/get_order</span><span class="ok">ok</span></li>
+          <li style="--i:6"><span class="n">7</span><span class="t">tool.call</span><span class="tgt">crm/search_orders</span><span class="ok">ok</span></li>
+          <li style="--i:7"><span class="n">8</span><span class="t">tool.call</span><span class="tgt">crm/get_order</span><span class="ok">ok</span></li>
+          <li class="halt" style="--i:8"><span class="n">9</span><span class="t">halt</span><span class="tgt">loop detected: cycle of 2 calls repeated 3 times</span><span></span></li>
+        </ol>
+        <div class="resp">HTTP/1.1 429  {"error": {"type": "run_halted", "message": "run run_42 halted: loop detected: cycle of 2 calls repeated 3 times"}}</div>
+      </figure>
+    </div>
+  </div>
+
+  <section id="problem">
+    <div class="wrap">
+      <div class="head">
+        <div class="label">The problem</div>
+        <h2>One request to an agent becomes dozens of calls. Nobody governs the whole task.</h2>
+        <p class="lede">API gateways check one request at a time. LLM gateways meter per key or per month. Limits inside agent code stop at the agent's own process. A task stuck in a loop can spend a team's monthly budget, and afterwards nobody can say which agent did what.</p>
+      </div>
+      <div class="grid3">
+        <div class="card">
+          <div class="fig">97M</div>
+          <h3>MCP SDK downloads a month</h3>
+          <p>Agents now reach tools through MCP, mostly on servers their operators did not write. Every one of them is exposed to tool poisoning and runaway tool use.</p>
+          <div class="src">Source: <a href="https://blog.modelcontextprotocol.io/posts/2025-12-09-mcp-joins-agentic-ai-foundation/">MCP blog, Dec 2025</a></div>
+        </div>
+        <div class="card">
+          <div class="fig">40%+</div>
+          <h3>of agentic AI projects canceled by 2027</h3>
+          <p>Gartner's forecast cites rising costs, unclear value and weak risk controls.</p>
+          <div class="src">Source: <a href="https://sdtimes.com/agentic-ai/gartner-more-than-40-of-agentic-ai-projects-will-be-canceled-in-next-few-years/">Gartner via SD Times</a></div>
+        </div>
+        <div class="card">
+          <div class="fig">14 / 27</div>
+          <h3>large companies report runaway AI cost</h3>
+          <p>In our review of public engineering posts, cost was the most common problem. Uber capped AI coding tools per month after a budget overrun.</p>
+          <div class="src">Source: our research, Nov 2026; <a href="https://news.bloomberglaw.com/artificial-intelligence/uber-caps-usage-of-ai-tools-like-claude-code-to-cut-costs-1">Bloomberg Law</a></div>
+        </div>
+      </div>
+      <div class="callout">
+        <p>"Execution context (originating user, intermediate agents) is dropped across agent hops." That is Uber's engineering team, describing the identity problem every multi-agent system runs into. <span class="src"><a href="https://www.uber.com/blog/solving-the-agent-identity-crisis/">Uber Engineering</a></span></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <div class="head">
+        <div class="label">How it works</div>
+        <h2>Govern the task, not the request.</h2>
+        <p class="lede">Every call in a task carries one run ID. agentgw sits in the network path, so it sees each model call, tool call and hand-off to another agent, and charges them all to the same run.</p>
+      </div>
+      <div class="flow">
+        <svg viewBox="0 0 1000 330" role="img" aria-label="Agents send every model, tool and agent call through agentgw with a run ID. agentgw verifies identity, checks policy, charges the run budget and detects loops, then routes the call to models, MCP tools or peer agents and records it. When a run exceeds its budget or loops, agentgw stops it.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="f-ah" d="M0,0 L10,5 L0,10 z"/></marker>
+            <marker id="ahh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="f-ah-h" d="M0,0 L10,5 L0,10 z"/></marker>
+          </defs>
+          <rect class="f-box" x="10" y="60" width="170" height="60" rx="10"/>
+          <text class="f-t" x="95" y="86" text-anchor="middle">Entry agent</text>
+          <text class="f-s" x="95" y="104" text-anchor="middle">your code, unchanged</text>
+          <rect class="f-box" x="10" y="200" width="170" height="60" rx="10"/>
+          <text class="f-t" x="95" y="226" text-anchor="middle">Peer agents</text>
+          <text class="f-s" x="95" y="244" text-anchor="middle">join the same run</text>
+          <line class="f-line" x1="180" y1="90" x2="317" y2="140" marker-end="url(#ah)"/>
+          <line class="f-line" x1="180" y1="230" x2="317" y2="190" marker-end="url(#ah)"/>
+          <text class="f-l" x="250" y="100" text-anchor="middle">X-Agent-Run-ID</text>
+
+          <rect class="f-core" x="320" y="20" width="330" height="290" rx="14"/>
+          <text class="f-t" x="485" y="48" text-anchor="middle">agentgw</text>
+          <rect class="f-stage" x="340" y="64" width="290" height="36" rx="7"/>
+          <text class="f-s" x="355" y="87">1  verify agent and user identity</text>
+          <rect class="f-stage" x="340" y="108" width="290" height="36" rx="7"/>
+          <text class="f-s" x="355" y="131">2  check policy and pinned tools</text>
+          <rect class="f-stage" x="340" y="152" width="290" height="36" rx="7"/>
+          <text class="f-s" x="355" y="175">3  charge the run budget, detect loops</text>
+          <rect class="f-stage" x="340" y="196" width="290" height="36" rx="7"/>
+          <text class="f-s" x="355" y="219">4  route: pinned pod, fallback, summarize</text>
+          <rect class="f-stage" x="340" y="240" width="290" height="36" rx="7"/>
+          <text class="f-s" x="355" y="263">5  record: run ledger and metrics</text>
+
+          <line class="f-line" x1="650" y1="90" x2="787" y2="70" marker-end="url(#ah)"/>
+          <line class="f-line" x1="650" y1="160" x2="787" y2="160" marker-end="url(#ah)"/>
+          <line class="f-line" x1="650" y1="230" x2="787" y2="250" marker-end="url(#ah)"/>
+          <text class="f-l" x="718" y="70" text-anchor="middle">OpenAI API</text>
+          <text class="f-l" x="718" y="152" text-anchor="middle">MCP</text>
+          <text class="f-l" x="718" y="258" text-anchor="middle">A2A</text>
+          <rect class="f-box" x="790" y="40" width="200" height="56" rx="10"/>
+          <text class="f-t" x="890" y="64" text-anchor="middle">Models</text>
+          <text class="f-s" x="890" y="82" text-anchor="middle">vLLM, NVIDIA NIM, APIs</text>
+          <rect class="f-box" x="790" y="132" width="200" height="56" rx="10"/>
+          <text class="f-t" x="890" y="156" text-anchor="middle">MCP tools</text>
+          <text class="f-s" x="890" y="174" text-anchor="middle">SQL, search, SaaS</text>
+          <rect class="f-box" x="790" y="224" width="200" height="56" rx="10"/>
+          <text class="f-t" x="890" y="248" text-anchor="middle">Other agents</text>
+          <text class="f-s" x="890" y="266" text-anchor="middle">same run, shared budget</text>
+
+          <path class="f-line-h" d="M340,170 C270,170 240,300 180,300"/>
+          <rect class="f-halt" x="10" y="284" width="170" height="34" rx="8"/>
+          <text class="f-lh" x="95" y="305" text-anchor="middle">429 run_halted</text>
+        </svg>
+      </div>
+      <ol class="steps">
+        <li><h3>Identity</h3><p>Agents sign in with Kubernetes service-account tokens, Cognito tokens or keys. The person's token is verified too, and each run belongs to one person.</p></li>
+        <li><h3>Policy</h3><p>Each agent gets default-deny lists of the models, tools, services and agents it may use. Policy is reviewed config in Git.</p></li>
+        <li><h3>Budget</h3><p>Steps, tool calls, tokens, dollars, time and delegation depth are capped per task, across every agent in it.</p></li>
+        <li><h3>Record</h3><p>One ledger line per call: run, agent, person, target, tokens, cost and outcome.</p></li>
+      </ol>
+<pre class="code"><span class="c"># Agents change the base URL and send a run ID. Nothing else.</span>
+client = OpenAI(base_url="http://agentgw:8080/v1", api_key=AGENT_TOKEN,
+                default_headers={"X-Agent-Run-ID": run_id})</pre>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="head">
+        <div class="label">What it enforces</div>
+        <h2>Built and tested today.</h2>
+      </div>
+      <div class="feat">
+        <div><span class="tag">built</span><h3>Run budgets</h3><p>Hard caps per task on steps, tool calls, tokens, dollars, wall time and delegation depth.</p></div>
+        <div><span class="tag">built</span><h3>Loop detection</h3><p>Stops repeated calls, two agents cycling, and streaks of failures. Halt or warn.</p></div>
+        <div><span class="tag new">new</span><h3>Tool pinning</h3><p>Fingerprints every MCP tool definition. A tool whose description changes is hidden and blocked until someone approves it.</p></div>
+        <div><span class="tag">built</span><h3>Human approval</h3><p>Risky tools wait for a single-use approval. Retries never send the same email twice.</p></div>
+        <div><span class="tag">built</span><h3>Agent and user identity</h3><p>Service-account tokens instead of client secrets. The person behind each task is verified and recorded.</p></div>
+        <div><span class="tag">built</span><h3>Long sessions survive</h3><p>When a prompt outgrows the model, older turns are summarized by a smaller model and the task continues.</p></div>
+        <div><span class="tag">built</span><h3>GPU-aware routing</h3><p>Each task sticks to one model pod to reuse its cache. Failing pods are skipped; a fallback model takes over.</p></div>
+        <div><span class="tag">built</span><h3>Document AI governed</h3><p>OCR, parsing, table detection, embeddings and reranking count toward the same task budget.</p></div>
+        <div><span class="tag">built</span><h3>Kubernetes native</h3><p>Signed Helm chart, hardened pod, readiness tied to the identity provider, Prometheus metrics.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="compare">
+    <div class="wrap">
+      <div class="head">
+        <div class="label">Compare</div>
+        <h2>Other tools see a request. agentgw sees the task.</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>API gateway or authorizer</th><th>LLM gateway</th><th>Limits in agent code</th><th class="us">agentgw</th></tr></thead>
+          <tbody>
+            <tr><td>Unit of control</td><td>One request</td><td>Key, user, month</td><td>One agent process</td><td class="us">The whole task, across agents</td></tr>
+            <tr><td>Sees request and response</td><td>No</td><td>Model calls</td><td>Yes</td><td class="us">Yes</td></tr>
+            <tr><td>Covers models, tools and agents</td><td>Varies</td><td>Models, some tools</td><td>Its own calls</td><td class="us">All three</td></tr>
+            <tr><td>Works without trusting agent code</td><td>Yes</td><td>Yes</td><td>No</td><td class="us">Yes</td></tr>
+            <tr><td>Loops, approvals, tool pinning</td><td>No</td><td>Rarely</td><td>Some</td><td class="us">Yes</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin-top:1rem">LiteLLM caps session spend, TokenOps caps runs inside one process, and agentgateway has strong MCP authorization. Each covers part of the task. In our November 2026 review, none covered the whole task in the network path.</p>
+    </div>
+  </section>
+
+  <section id="status">
+    <div class="wrap two">
+      <div class="head" style="margin:0">
+        <div class="label">Status</div>
+        <h2>Private preview.</h2>
+        <p class="lede">The gateway is built test-first and runs on Amazon EKS with self-hosted NVIDIA NIM models. We are looking for design partners to run it in a development environment beside their current setup.</p>
+        <div class="stats">
+          <div><b>100+</b><span>automated tests</span></div>
+          <div><b>19</b><span>property-based tests</span></div>
+          <div><b>2</b><span>fuzz targets in CI</span></div>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:1rem">Next on the roadmap</h3>
+        <ul class="list">
+          <li><span>Audit-only mode, to run beside an existing authorizer before enforcing</span></li>
+          <li><span>Shared run state for multiple replicas and high availability</span></li>
+          <li><span>Per-person credentials, so tools act with the user's own permissions</span></li>
+          <li><span>Scanning tool inputs and outputs for prompt injection and secrets</span></li>
+          <li><span>OpenTelemetry traces per task, and usage quotas per team</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="founder">
+    <div class="wrap">
+      <div class="head">
+        <div class="label">Founder</div>
+      </div>
+      <div class="founder">
+        <div class="mono-av" aria-hidden="true">AS</div>
+        <div class="founder-copy">
+          <h2>Asis Sethi</h2>
+          <p>15 years in AI and DevOps engineering: building and running the platforms that train, serve and operate models and agents in production, on Kubernetes and AWS.</p>
+          <p>agentgw comes from that work. Every agent platform reaches the same point: the agents work, and then nobody can say what a task cost, why it looped, or which agent acted for which person.</p>
+          <p><a href="https://github.com/DevOpsArchaeologist">github.com/DevOpsArchaeologist</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="access" class="cta">
+    <div class="wrap">
+      <div class="label" style="color:inherit;opacity:.7">Early access</div>
+      <h2>Run agentgw beside your agents.</h2>
+      <p>We are working with a small number of teams that run agents on Kubernetes. Tell us about your setup and we will help you run agentgw in a development environment, watching your traffic before it enforces anything.</p>
+      <div class="buttons">
+        <a class="btn primary" href="https://github.com/DevOpsArchaeologist/agentgw/issues/new?template=early-access.yml">Request early access</a>
+        <a class="btn ghost" href="https://github.com/DevOpsArchaeologist">Contact on GitHub</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>agentgw &middot; 2026</span>
+    <span>Product names belong to their owners. Figures link to their sources.</span>
+  </div>
+</footer>
+</body>
+</html>

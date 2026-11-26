@@ -1,0 +1,48 @@
+name: Early access
+description: Ask to run agentgw beside your agents as a design partner.
+title: "Early access: <your team or company>"
+labels: [early-access]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest in agentgw. This issue is public, so do not
+        include secrets, internal hostnames or customer data.
+  - type: input
+    id: team
+    attributes:
+      label: Team or company
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where do your agents run?
+      options:
+        - Amazon EKS
+        - Other Kubernetes (AKS, GKE, on-prem)
+        - Not on Kubernetes yet
+    validations:
+      required: true
+  - type: textarea
+    id: stack
+    attributes:
+      label: Your agent stack
+      description: Frameworks, models (self-hosted or hosted), MCP servers, how agents call each other.
+    validations:
+      required: true
+  - type: checkboxes
+    id: problems
+    attributes:
+      label: Which problems do you want solved?
+      options:
+        - label: Cost per task and runaway loops
+        - label: Agent and user identity across agents
+        - label: Tool security (MCP tool poisoning, approvals)
+        - label: Audit trail of who did what
+        - label: Routing to self-hosted models
+  - type: input
+    id: contact
+    attributes:
+      label: How should we reach you?
+      description: A GitHub handle is enough. Only share an email if you are happy for it to be public.
