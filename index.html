@@ -355,6 +355,7 @@ client = OpenAI(base_url="http://agentgw:8080/v1", api_key=AGENT_TOKEN,
         <div><span class="tag">built</span><h3>Run budgets</h3><p>Hard caps per task on steps, tool calls, tokens, dollars, wall time and delegation depth.</p></div>
         <div><span class="tag">built</span><h3>Loop detection</h3><p>Stops repeated calls, two agents cycling, and streaks of failures. Halt or warn.</p></div>
         <div><span class="tag new">new</span><h3>Tool pinning</h3><p>Fingerprints every MCP tool definition. A tool whose description changes is hidden and blocked until someone approves it.</p></div>
+        <div><span class="tag new">new</span><h3>Quotas per agent and user</h3><p>Requests, tokens or dollars per minute, hour, day or month, across every task an agent or a person runs.</p></div>
         <div><span class="tag">built</span><h3>Human approval</h3><p>Risky tools wait for a single-use approval. Retries never send the same email twice.</p></div>
         <div><span class="tag">built</span><h3>Agent and user identity</h3><p>Service-account tokens instead of client secrets. The person behind each task is verified and recorded.</p></div>
         <div><span class="tag">built</span><h3>Long sessions survive</h3><p>When a prompt outgrows the model, older turns are summarized by a smaller model and the task continues.</p></div>
@@ -395,7 +396,7 @@ client = OpenAI(base_url="http://agentgw:8080/v1", api_key=AGENT_TOKEN,
         <p class="lede">The gateway is built test-first and runs on Amazon EKS with self-hosted NVIDIA NIM models. We are looking for design partners to run it in a development environment beside their current setup.</p>
         <div class="stats">
           <div><b>100+</b><span>automated tests</span></div>
-          <div><b>19</b><span>property-based tests</span></div>
+          <div><b>23</b><span>property-based tests</span></div>
           <div><b>2</b><span>fuzz targets in CI</span></div>
         </div>
       </div>
