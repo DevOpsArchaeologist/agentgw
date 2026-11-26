@@ -107,6 +107,8 @@ section { padding-block: 80px; border-top: 1px solid var(--line); }
 .src a { color: var(--muted); }
 .callout { margin-top: 1.6rem; padding: 1.1rem 1.3rem; border-left: 3px solid var(--stop); background: var(--surface); border-radius: 0 10px 10px 0; max-width: 820px; }
 
+video.demo { display: block; width: 100%; height: auto; max-width: 100%; border-radius: 12px; border: 1px solid var(--line); background: #1a1b26; }
+
 /* how it works */
 .flow { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
 .flow svg { display: block; width: 100%; min-width: 760px; height: auto; color: var(--ink); }
@@ -179,6 +181,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
       agentgw
     </a>
     <nav class="nav" aria-label="Sections">
+      <a href="#demo">Demo</a>
       <a href="#problem">Problem</a>
       <a href="#how">How it works</a>
       <a href="#compare">Compare</a>
@@ -197,7 +200,7 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
         <p class="lede">agentgw caps what one agent task can cost and do, across every model, tool and agent it touches. It keeps a full record of who did what, and what it cost.</p>
         <div class="buttons">
           <a class="btn primary" href="#access">Request early access</a>
-          <a class="btn ghost" href="#how">See how it works</a>
+          <a class="btn ghost" href="#demo">Watch the 60-second demo</a>
         </div>
         <p class="note">Runs on Kubernetes beside your models. Agents change one URL and send one header.</p>
       </div>
@@ -219,6 +222,26 @@ footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; g
       </figure>
     </div>
   </div>
+
+  <section id="demo">
+    <div class="wrap">
+      <div class="head">
+        <div class="label">Demo &middot; 60 seconds</div>
+        <h2>A looping agent stopped, a budget enforced, a poisoned tool blocked.</h2>
+        <p class="lede">Recorded against a real agentgw build. The model and the CRM tool server are stand-ins, so you can see every decision without GPUs.</p>
+      </div>
+      <video class="demo" controls preload="metadata" playsinline poster="media/demo-poster.jpg" width="1280" height="720">
+        <source src="media/demo.mp4" type="video/mp4">
+        <a href="media/demo.mp4">Download the demo video</a>
+      </video>
+      <ol class="steps">
+        <li><h3>Loop</h3><p>An agent alternates between two tools. On the third repeat of the cycle, agentgw stops the whole task.</p></li>
+        <li><h3>Budget</h3><p>The task may spend $1.00. The call that crosses the line finishes, and the next one is refused.</p></li>
+        <li><h3>Tool poisoning</h3><p>The tool server changes a description to steal an SSH key. The tool disappears from the agent and its calls are refused.</p></li>
+        <li><h3>Audit</h3><p>Every call, and the reason the task was stopped, is in the ledger.</p></li>
+      </ol>
+    </div>
+  </section>
 
   <section id="problem">
     <div class="wrap">
